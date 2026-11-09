@@ -9,7 +9,9 @@ import {
   resolveMovement,
   WorldLocationId,
   WORLD_LOCATIONS,
+  WORLD_NPCS,
   WorldHotspot,
+  BuiltWorldNpc,
 } from './WorldScenes';
 import { WorldControls } from './WorldControls';
 import { WarriGoogleMap } from '../GoogleMap/WarriGoogleMap';
@@ -49,9 +51,18 @@ export function WorldExplorerModal() {
   const [showGoogleMap, setShowGoogleMap] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [speedModeLabel, setSpeedModeLabel] = useState<'IDLE' | 'WALK' | 'SPRINT' | 'JUMP'>('IDLE');
+  const [npcSpeech, setNpcSpeech] = useState<{
+    icon: string;
+    name: string;
+    role: string;
+    text: string;
+  } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const activeNpcRef = useRef<BuiltWorldNpc | null>(null);
+  const builtNpcsRef = useRef<BuiltWorldNpc[]>([]);
+  const speechTimerRef = useRef<any>(null);
 
   const moveVectorRef = useRef<{ x: number; z: number; isRunning: boolean }>({
     x: 0,
@@ -98,6 +109,7 @@ export function WorldExplorerModal() {
   const reactionTimerRef = useRef<any>(null);
 
   const currentLocMeta = WORLD_LOCATIONS[activeLocation];
+  const currentLocationNpcs = WORLD_NPCS[activeLocation] || [];
   const avatarConfig = (state.flags.avatar as AvatarConfig) || DEFAULT_MALE_AVATAR;
 
   // Toggle Native Browser Full Screen
@@ -128,9 +140,46 @@ export function WorldExplorerModal() {
     }
   }, []);
 
-  // Handle Hotspot Interaction
+  // Handle Hotspot or Walking NPC Interaction
   const handleInteract = useCallback(() => {
     if (!activeHotspot) return;
+
+    // Check if interacting with a walking 3D NPC
+    if (activeNpcRef.current && activeHotspot.id.startsWith('npc_talk_')) {
+      const npc = activeNpcRef.current;
+      playSound.fanfare();
+
+      const lines = npc.def.dialogueLines;
+      const line = lines[npc.dialogueIndex % lines.length];
+      npc.dialogueIndex = (npc.dialogueIndex + 1) % lines.length;
+      npc.reactionPose = 'groove';
+      npc.reactionTimer = 3.0;
+
+      reactionPoseRef.current = 'wave';
+      if (reactionTimerRef.current) clearTimeout(reactionTimerRef.current);
+      reactionTimerRef.current = setTimeout(() => {
+        reactionPoseRef.current = 'idle';
+      }, 2200);
+
+      setNpcSpeech({
+        icon: npc.def.icon,
+        name: npc.def.name,
+        role: npc.def.role,
+        text: line,
+      });
+      if (speechTimerRef.current) clearTimeout(speechTimerRef.current);
+      speechTimerRef.current = setTimeout(() => {
+        setNpcSpeech(null);
+      }, 5000);
+
+      interactWorld(
+        `Talked with ${npc.def.name}`,
+        npc.def.statDeltas || { mood: 8, respect: 5 },
+        npc.def.moneyDelta,
+        `${npc.def.icon} ${npc.def.name}: "${line}"`
+      );
+      return;
+    }
 
     if (activeHotspot.sound === 'coin') playSound.coin();
     else if (activeHotspot.sound === 'alert') playSound.alert();
@@ -160,6 +209,7 @@ export function WorldExplorerModal() {
     playSound.click();
     setActiveLocation(locId);
     setActiveHotspot(null);
+    setNpcSpeech(null);
     const targetSpawn = WORLD_LOCATIONS[locId].spawn;
     avatarPosRef.current = {
       x: targetSpawn.x,
@@ -173,14 +223,37 @@ export function WorldExplorerModal() {
     cameraOrbitRef.current.yaw = 0;
   };
 
+  // Walk / Teleport next to a specific person in the current scene
+  const walkToPerson = (npcId: string) => {
+    const targetNpc = builtNpcsRef.current.find((n) => n.def.id === npcId);
+    if (!targetNpc) return;
+    playSound.click();
+    avatarPosRef.current.x = targetNpc.x;
+    avatarPosRef.current.z = Math.min(currentLocMeta.boundary.maxZ - 0.4, targetNpc.z + 0.75);
+    avatarPosRef.current.rotY = Math.PI;
+    targetNpc.reactionPose = 'wave';
+    targetNpc.reactionTimer = 2.8;
+    const line = targetNpc.def.dialogueLines[0];
+    setNpcSpeech({
+      icon: targetNpc.def.icon,
+      name: targetNpc.def.name,
+      role: targetNpc.def.role,
+      text: line,
+    });
+    if (speechTimerRef.current) clearTimeout(speechTimerRef.current);
+    speechTimerRef.current = setTimeout(() => {
+      setNpcSpeech(null);
+    }, 4500);
+  };
+
   // Three.js Render & 3D Movement Loop Setup
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
 
-    let width = container.clientWidth || window.innerWidth || 360;
-    let height = container.clientHeight || window.innerHeight || 640;
+    const width = container.clientWidth || window.innerWidth || 360;
+    const height = container.clientHeight || window.innerHeight || 640;
 
     // 1. Scene
     const scene = new THREE.Scene();
@@ -221,8 +294,9 @@ export function WorldExplorerModal() {
     dirLight.shadow.mapSize.height = 1024;
     scene.add(dirLight);
 
-    // 5. Build Location Environment Scene
+    // 5. Build Location Environment Scene (including walking 3D NPCs)
     const worldScene = buildWorldScene(activeLocation);
+    builtNpcsRef.current = worldScene.npcs;
     scene.add(worldScene.group);
 
     // 6. Build Controllable 3D Avatar (without studio pedestal)
@@ -344,11 +418,10 @@ export function WorldExplorerModal() {
       // Vertical 3D Jump & Gravity Physics
       if (avatarPosRef.current.y > 0 || avatarPosRef.current.vy !== 0) {
         avatarPosRef.current.y += avatarPosRef.current.vy * delta;
-        avatarPosRef.current.vy -= 16.5 * delta; // Gravity
+        avatarPosRef.current.vy -= 16.5 * delta;
         if (avatarPosRef.current.y <= 0) {
           avatarPosRef.current.y = 0;
           avatarPosRef.current.vy = 0;
-          // Puff of dust on landing
           spawnDustPuff(avatarPosRef.current.x, avatarPosRef.current.z, 1.4);
         }
       }
@@ -411,7 +484,12 @@ export function WorldExplorerModal() {
       }
 
       rig.update(delta, time, currentPose, state.stats.energy);
-      worldScene.update(delta, time);
+      worldScene.update(
+        delta,
+        time,
+        avatarPosRef.current.x,
+        avatarPosRef.current.z
+      );
 
       // Smooth 360° Third-Person Orbit Camera Following
       const orbit = cameraOrbitRef.current;
@@ -448,22 +526,51 @@ export function WorldExplorerModal() {
         avatarPosRef.current.z
       );
 
-      // Hotspot Distance Check
-      let closest: WorldHotspot | null = null;
-      const minDistance = 1.2;
+      // Check Distance to Walking 3D People (NPCs) AND Scene Hotspots
+      let closestNpc: BuiltWorldNpc | null = null;
+      let minNpcDist = 1.25;
 
-      for (const spot of worldScene.hotspots) {
+      for (const npc of worldScene.npcs) {
         const dist = Math.hypot(
-          avatarPosRef.current.x - spot.x,
-          avatarPosRef.current.z - spot.z
+          avatarPosRef.current.x - npc.x,
+          avatarPosRef.current.z - npc.z
         );
-        if (dist < minDistance) {
-          closest = spot;
-          break;
+        if (dist < minNpcDist) {
+          minNpcDist = dist;
+          closestNpc = npc;
         }
       }
 
-      setActiveHotspot(closest);
+      if (closestNpc) {
+        activeNpcRef.current = closestNpc;
+        setActiveHotspot({
+          id: `npc_talk_${closestNpc.def.id}`,
+          label: `${closestNpc.def.name} (${closestNpc.def.role})`,
+          icon: closestNpc.def.icon,
+          prompt: `Talk to ${closestNpc.def.name}`,
+          description: closestNpc.def.dialogueLines[0],
+          x: closestNpc.x,
+          z: closestNpc.z,
+          statDeltas: closestNpc.def.statDeltas,
+          moneyDelta: closestNpc.def.moneyDelta,
+        });
+      } else {
+        activeNpcRef.current = null;
+        let closestSpot: WorldHotspot | null = null;
+        const minDistance = 1.2;
+
+        for (const spot of worldScene.hotspots) {
+          const dist = Math.hypot(
+            avatarPosRef.current.x - spot.x,
+            avatarPosRef.current.z - spot.z
+          );
+          if (dist < minDistance) {
+            closestSpot = spot;
+            break;
+          }
+        }
+        setActiveHotspot(closestSpot);
+      }
 
       renderer.render(scene, camera);
     };
@@ -595,6 +702,25 @@ export function WorldExplorerModal() {
           </button>
         </div>
 
+        {/* People Walking Here Bar (Tap any person to walk up & greet them) */}
+        <div className={styles.peopleRosterBar} aria-label="People in this location">
+          <span className={styles.peopleLabel}>
+            👥 People Here ({currentLocationNpcs.length}):
+          </span>
+          {currentLocationNpcs.map((npc) => (
+            <button
+              key={npc.id}
+              type="button"
+              className={styles.personChip}
+              onClick={() => walkToPerson(npc.id)}
+              title={`Walk up to ${npc.name} (${npc.role})`}
+            >
+              <span>{npc.icon}</span>
+              <span>{npc.name}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Full-Screen 3D Viewport with 360° Touch/Mouse Orbit */}
         <div
           ref={containerRef}
@@ -661,9 +787,22 @@ export function WorldExplorerModal() {
             </div>
 
             <div className={styles.controlsTip}>
-              <span>🕹️ Drag screen to rotate 3D camera · WASD / Stick to Run</span>
+              <span>🕹️ Drag screen to rotate 3D camera · Walk near people to chat</span>
             </div>
           </div>
+
+          {/* Live NPC Speech Bubble */}
+          {npcSpeech && (
+            <div className={styles.npcSpeechBubble} role="status">
+              <span className={styles.npcSpeechIcon}>{npcSpeech.icon}</span>
+              <div className={styles.npcSpeechContent}>
+                <span className={styles.npcSpeechHeader}>
+                  {npcSpeech.name} · {npcSpeech.role}
+                </span>
+                <span className={styles.npcSpeechText}>“{npcSpeech.text}”</span>
+              </div>
+            </div>
+          )}
 
           {/* Virtual 8-Way D-Pad / Stick, Run Toggle, 3D Jump & Hotspot Trigger */}
           <WorldControls

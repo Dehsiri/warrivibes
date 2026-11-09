@@ -118,3 +118,16 @@
 - **Contract changes requested:** none
 - **Known issues / unsure about:** none
 - **Next steps:** Push to GitHub remotes to trigger Vercel deployment.
+
+## 2026-11-09 · Walking 3D People in Church, Market, Effurun Roundabout & Compound · UI Agent · master
+- **Done:**
+  - **Walking 3D NPCs & Patrol AI ([`apps/web/src/components/WorldExplorer/WorldScenes.ts`](file:///c:/Users/USER/Documents/WARRI%20VIBES/apps/web/src/components/WorldExplorer/WorldScenes.ts)):**
+    - Added 14 animated 3D people (`WORLD_NPCS`) across `church` (Brother Tega, Sister Kevwe, Deaconess Martha, Pastor Osas), `market` (Elder Mine, Mama Tonye, Blessing Stitches, Sisi Caro), `junction` (Ejiro, Bros Kpako, Mama Joy, DJ Kevwe), and `living_room` (Chidi, Aunty Bisi).
+    - Implemented waypoint walking patrols (`patrolWaypoints`), player-proximity pausing and head/body turning when approached (`distToPlayer < 1.35`), and emerald ground rings.
+  - **Interactive NPC Dialogue, Speech Bubbles & Roster Bar ([`apps/web/src/components/WorldExplorer/WorldExplorerModal.tsx`](file:///c:/Users/USER/Documents/WARRI%20VIBES/apps/web/src/components/WorldExplorer/WorldExplorerModal.tsx), [`apps/web/src/components/WorldExplorer/WorldExplorerModal.module.css`](file:///c:/Users/USER/Documents/WARRI%20VIBES/apps/web/src/components/WorldExplorer/WorldExplorerModal.module.css)):**
+    - Added `👥 People Here` quick-navigation chips, proximity `[E] Talk to <Name>` interaction, live speech bubble banners, and stat/respect/mood rewards.
+- **Tests & Verification:**
+  - Running `npm run typecheck`, `npm run lint`, `npm run test`, and `npm run build`.
+- **Contract changes requested:** none
+- **Known issues / unsure about:** none
+- **Next steps:** Push to `https://github.com/Dehsiri/warrivibes.git`.

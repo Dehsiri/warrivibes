@@ -218,6 +218,97 @@
   box-shadow: 0 4px 14px rgba(217, 119, 6, 0.4);
 }
 
+/* People Walking Roster Bar */
+.peopleRosterBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(10, 15, 29, 0.92);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  z-index: 10;
+}
+
+.peopleRosterBar::-webkit-scrollbar {
+  display: none;
+}
+
+.peopleLabel {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #6ee7b7;
+  white-space: nowrap;
+  margin-right: 2px;
+}
+
+.personChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #ecfdf5;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.personChip:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #34d399;
+}
+
+/* Live NPC Speech Bubble Overlay */
+.npcSpeechBubble {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(92vw, 460px);
+  background: rgba(15, 23, 42, 0.94);
+  border: 2px solid #10b981;
+  border-radius: 16px;
+  padding: 10px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 16px rgba(16, 185, 129, 0.35);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  z-index: 25;
+  pointer-events: none;
+  animation: bounceIn 0.22s ease-out;
+}
+
+.npcSpeechIcon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.npcSpeechContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.npcSpeechHeader {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #6ee7b7;
+}
+
+.npcSpeechText {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #f8fafc;
+  line-height: 1.35;
+}
+
 /* 3D Viewport Area */
 .viewportContainer {
   flex: 1;

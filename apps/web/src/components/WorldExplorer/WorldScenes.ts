@@ -1,7 +1,39 @@
 import * as THREE from 'three';
 import { Stats } from '@warri-vibe/engine';
+import { AvatarConfig } from '../../types/avatar';
+import { build3DAvatar, AvatarRig } from '../Avatar3D/AvatarModelBuilder';
 
 export type WorldLocationId = 'living_room' | 'church' | 'market' | 'junction';
+
+export interface WorldNpcDef {
+  id: string;
+  name: string;
+  role: string;
+  icon: string;
+  affinityId?: string;
+  dialogueLines: string[];
+  statDeltas?: Partial<Stats>;
+  moneyDelta?: number;
+  avatarConfig: AvatarConfig;
+  startX: number;
+  startZ: number;
+  startRotY: number;
+  defaultPose: 'idle' | 'walk' | 'run' | 'groove' | 'wave' | 'proud' | 'hustle';
+  patrolWaypoints?: { x: number; z: number }[];
+  patrolSpeed?: number;
+}
+
+export interface BuiltWorldNpc {
+  def: WorldNpcDef;
+  rig: AvatarRig;
+  x: number;
+  z: number;
+  rotY: number;
+  waypointIdx: number;
+  reactionPose: string | null;
+  reactionTimer: number;
+  dialogueIndex: number;
+}
 
 export interface WorldHotspot {
   id: string;
@@ -385,13 +417,532 @@ export const WORLD_LOCATIONS: Record<WorldLocationId, WorldSceneConfig> = {
   },
 };
 
+export const WORLD_NPCS: Record<WorldLocationId, WorldNpcDef[]> = {
+  living_room: [
+    {
+      id: 'npc_chidi',
+      name: 'Chidi',
+      role: 'Compound Tech Neighbour',
+      icon: '👨🏾‍💻',
+      dialogueLines: [
+        'Bros! Remote design gig dey pay well when light steady.',
+        'If NEPA take light, my power bank still get two bars.',
+      ],
+      statDeltas: { mood: 8, respect: 5 },
+      avatarConfig: {
+        gender: 'male',
+        name: 'Chidi',
+        skinTone: '#5e3829',
+        outfitStyle: 'senator',
+        outfitColor: '#1e3a8a',
+        accentColor: '#fde047',
+        hairStyle: 'fade',
+        hairColor: '#111827',
+        sunglasses: true,
+        goldChain: true,
+        coralBeads: false,
+        wristwatch: true,
+        earrings: false,
+      },
+      startX: -0.7,
+      startZ: 0.4,
+      startRotY: 0,
+      defaultPose: 'walk',
+      patrolWaypoints: [
+        { x: -0.7, z: 0.4 },
+        { x: 0.9, z: 0.4 },
+        { x: 0.9, z: -0.9 },
+        { x: -0.7, z: -0.2 },
+      ],
+      patrolSpeed: 1.05,
+    },
+    {
+      id: 'npc_bisi',
+      name: 'Aunty Bisi',
+      role: 'Udu Compound Caretaker',
+      icon: '👩🏾',
+      dialogueLines: [
+        'Welcome back! Make sure you lock compound gate by 10pm o.',
+        'Landlord say people wey pay rent early go get peace of mind!',
+      ],
+      statDeltas: { respect: 6, mood: 6 },
+      avatarConfig: {
+        gender: 'female',
+        name: 'Aunty Bisi',
+        skinTone: '#3f261d',
+        outfitStyle: 'ankara',
+        outfitColor: '#c2410c',
+        accentColor: '#fef08a',
+        hairStyle: 'gele',
+        hairColor: '#111827',
+        sunglasses: false,
+        goldChain: false,
+        coralBeads: true,
+        wristwatch: true,
+        earrings: true,
+      },
+      startX: -1.3,
+      startZ: 2.2,
+      startRotY: Math.PI / 2,
+      defaultPose: 'walk',
+      patrolWaypoints: [
+        { x: -1.3, z: 2.2 },
+        { x: 1.3, z: 2.2 },
+      ],
+      patrolSpeed: 1.0,
+    },
+  ],
+
+  church: [
+    {
+      id: 'npc_tega',
+      name: 'Brother Tega',
+      role: 'Sanctuary Head Usher',
+      icon: '🤵🏾',
+      dialogueLines: [
+        'Happy Sunday! God bless your hustle in Warri this week.',
+        'Walk down the red carpet aisle, your testimony dey loud!',
+      ],
+      statDeltas: { mood: 10, respect: 8 },
+      avatarConfig: {
+        gender: 'male',
+        name: 'Brother Tega',
+        skinTone: '#5e3829',
+        outfitStyle: 'senator',
+        outfitColor: '#0d5c3a',
+        accentColor: '#f59e0b',
+        hairStyle: 'fade',
+        hairColor: '#111827',
+        sunglasses: false,
+        goldChain: false,
+        coralBeads: false,
+        wristwatch: true,
+        earrings: false,
+      },
+      startX: 0.45,
+      startZ: 2.4,
+      startRotY: Math.PI,
+      defaultPose: 'walk',
+      patrolWaypoints: [
+        { x: 0.45, z: 2.4 },
+        { x: 0.45, z: -0.9 },
+        { x: -0.45, z: -0.9 },
+        { x: -0.45, z: 2.4 },
+      ],
+      patrolSpeed: 1.25,
+    },
+    {
+      id: 'npc_kevwe',
+      name: 'Sister Kevwe',
+      role: 'Praise & Choir Leader',
+      icon: '🎤',
+      dialogueLines: [
+        'When Warri choir raise praise song, nobody fit sit down!',
+        'Keep dancing! Joy dey bring open doors!',
+      ],
+      statDeltas: { mood: 14, respect: 6 },
+      avatarConfig: {
+        gender: 'female',
+        name: 'Sister Kevwe',
+        skinTone: '#7d4c35',
+        outfitStyle: 'ankara',
+        outfitColor: '#831843',
+        accentColor: '#fbbf24',
+        hairStyle: 'gele',
+        hairColor: '#111827',
+        sunglasses: false,
+        goldChain: false,
+        coralBeads: true,
+        wristwatch: true,
+        earrings: true,
+      },
+      startX: -1.1,
+      startZ: -1.25,
+      startRotY: 0,
+      defaultPose: 'walk',
+      patrolWaypoints: [
+        { x: -1.1, z: -1.25 },
+        { x: 1.1, z: -1.25 },
+      ],
+      patrolSpeed: 1.1,
+    },
+    {
+      id: 'npc_martha',
+      name: 'Deaconess Martha',
+      role: 'Chapel Mother',
+      icon: '👑',
+      dialogueLines: [
+        'My pikin, grace go follow you from Effurun to Main Market!',
+        'No let street wahala spoil your joy.',
+      ],
+      statDeltas: { mood: 12, heat: -10 },
+      avatarConfig: {
+        gender: 'female',
+        name: 'Deaconess Martha',
+        skinTone: '#3f261d',
+        outfitStyle: 'owambe',
+        outfitColor: '#f8fafc',
+        accentColor: '#d97706',
+        hairStyle: 'gele',
+        hairColor: '#111827',
+        sunglasses: false,
+        goldChain: true,
+        coralBeads: true,
+        wristwatch: true,
+        earrings: true,
+      },
+      startX: -2.4,
+      startZ: 2.6,
+      startRotY: Math.PI / 2,
+      defaultPose: 'walk',
+      patrolWaypoints: [
+        { x: -2.4, z: 2.6 },
+        { x: 2.4, z: 2.6 },
+      ],
+      patrolSpeed: 1.05,
+    },
+    {
+      id: 'npc_pastor_osas',
+      name: 'Pastor Osas',
+      role: 'Senior Chapel Minister',
+      icon: '🕊️',
+      dialogueLines: [
+        'Receive double favour for your market table dream!',
+        'Everything your hand touch in Delta State shall prosper!',
+      ],
+      statDeltas: { mood: 15, respect: 10, heat: -12 },
+      avatarConfig: {
+        gender: 'male',
+        name: 'Pastor Osas',
+        skinTone: '#2c1b18',
+        outfitStyle: 'owambe',
+        outfitColor: '#f8fafc',
+        accentColor: '#f59e0b',
+        hairStyle: 'fila',
+        hairColor: '#111827',
+        sunglasses: false,
+        goldChain: true,
+        coralBeads: true,
+        wristwatch: true,
+        earrings: false,
+      },
+      startX: 0,
+      startZ: -1.35,
+      startRotY: 0,
+      defaultPose: 'wave',
+    },
+  ],
+
+  market: [
+    {
+      id: 'npc_elder_mine',
+      name: 'Elder Mine',
+      role: 'Market Union Chairman',
+      icon: '👑',
+      affinityId: 'chief_oghenemine',
+      dialogueLines: [
+        'I dey inspect all stalls today. Keep your hustle clean and steady!',
+        'Once your ₦12,000 deposit ready, your own market table dey wait.',
+      ],
+      statDeltas: { respect: 14, mood: 6 },
+      avatarConfig: {
+        gender: 'male',
+        name: 'Elder Mine',
+        skinTone: '#2c1b18',
+        outfitStyle: 'owambe',
+        outfitColor: '#0d5c3a',
+        accentColor: '#f59e0b',
+        hairStyle: 'fila',
+        hairColor: '#111827',
+        sunglasses: false,
+        goldChain: true,
+        coralBeads: true,
+        wristwatch: true,
+        earrings: false,
+      },
+      startX: -0.45,
+      startZ: 2.7,
+      startRotY: Math.PI,
+      defaultPose: 'walk',
+      patrolWaypoints: [
+        { x: -0.45, z: 2.7 },
+        { x: -0.45, z: -2.5 },
+        { x: 0.45, z: -2.5 },
+        { x: 0.45, z: 2.7 },
+      ],
+      patrolSpeed: 1.3,
+    },
+    {
+      id: 'npc_mama_tonye',
+      name: 'Mama Tonye',
+      role: 'Provision & Tomato Queen',
+      icon: '🍅',
+      affinityId: 'mama_tonye',
+      dialogueLines: [
+        'Customer! Fresh pepper and tomato just land from Ughelli!',
+        'Shine your eye well for Warri Main Market o!',
+      ],
+      statDeltas: { respect: 10, mood: 8 },
+      avatarConfig: {
+        gender: 'female',
+        name: 'Mama Tonye',
+        skinTone: '#5e3829',
+        outfitStyle: 'ankara',
+        outfitColor: '#c2410c',
+        accentColor: '#fef08a',
+        hairStyle: 'gele',
+        hairColor: '#111827',
+        sunglasses: false,
+        goldChain: false,
+        coralBeads: true,
+        wristwatch: true,
+        earrings: true,
+      },
+      startX: -0.8,
+      startZ: -0.25,
+      startRotY: 0,
+      defaultPose: 'walk',
+      patrolWaypoints: [
+        { x: -0.8, z: -0.25 },
+        { x: -2.6, z: -0.25 },
+        { x: -0.8, z: 0.55 },
+      ],
+      patrolSpeed: 1.15,
+    },
+    {
+      id: 'npc_blessing',
+      name: 'Blessing Stitches',
+      role: 'Aso-Ebi Fashion Designer',
+      icon: '👗',
+      affinityId: 'blessing_tailor',
+      dialogueLines: [
+        'I dey price new lace and Ankara fabric for Saturday owambe!',
+        'Your drip sharp well well! Warri fashion no get rival.',
+      ],
+      statDeltas: { mood: 12, respect: 8 },
+      avatarConfig: {
+        gender: 'female',
+        name: 'Blessing Stitches',
+        skinTone: '#9e6443',
+        outfitStyle: 'ankara',
+        outfitColor: '#1e3a8a',
+        accentColor: '#fde047',
+        hairStyle: 'braids',
+        hairColor: '#111827',
+        sunglasses: true,
+        goldChain: true,
+        coralBeads: false,
+        wristwatch: true,
+        earrings: true,
+      },
+      startX: 0.85,
+      startZ: -0.4,
+      startRotY: 0,
+      defaultPose: 'walk',
+      patrolWaypoints: [
+        { x: 0.85, z: -0.4 },
+        { x: 0.85, z: 2.5 },
+        { x: -0.6, z: 2.5 },
+        { x: 0.85, z: 0.4 },
+      ],
+      patrolSpeed: 1.38,
+    },
+    {
+      id: 'npc_caro',
+      name: 'Sisi Caro',
+      role: 'Market Shopper & Trader',
+      icon: '🛍️',
+      dialogueLines: [
+        'Network dey fast for this POS corner today!',
+        'If you buy bulk early morning, profit go plenty.',
+      ],
+      statDeltas: { mood: 8, respect: 6 },
+      avatarConfig: {
+        gender: 'female',
+        name: 'Sisi Caro',
+        skinTone: '#7d4c35',
+        outfitStyle: 'ankara',
+        outfitColor: '#0d5c3a',
+        accentColor: '#f59e0b',
+        hairStyle: 'puff',
+        hairColor: '#111827',
+        sunglasses: false,
+        goldChain: false,
+        coralBeads: true,
+        wristwatch: false,
+        earrings: true,
+      },
+      startX: -2.5,
+      startZ: -2.6,
+      startRotY: Math.PI / 2,
+      defaultPose: 'walk',
+      patrolWaypoints: [
+        { x: -2.5, z: -2.6 },
+        { x: 0.9, z: -2.6 },
+        { x: 0.9, z: -0.5 },
+      ],
+      patrolSpeed: 1.25,
+    },
+  ],
+
+  junction: [
+    {
+      id: 'npc_ejiro',
+      name: 'Ejiro',
+      role: 'Keke Rider & Street Plug',
+      icon: '🚖',
+      affinityId: 'ejiro',
+      dialogueLines: [
+        'Effurun Roundabout dey hot! Enter my Keke make we move sharp!',
+        'Anytime traffic lock PTI road, I sabi the fastest shortcut.',
+      ],
+      statDeltas: { respect: 12, mood: 10 },
+      avatarConfig: {
+        gender: 'male',
+        name: 'Ejiro',
+        skinTone: '#5e3829',
+        outfitStyle: 'casual',
+        outfitColor: '#1f2937',
+        accentColor: '#10b981',
+        hairStyle: 'fila',
+        hairColor: '#111827',
+        sunglasses: true,
+        goldChain: true,
+        coralBeads: false,
+        wristwatch: true,
+        earrings: false,
+      },
+      startX: -0.55,
+      startZ: 0.9,
+      startRotY: Math.PI,
+      defaultPose: 'walk',
+      patrolWaypoints: [
+        { x: -0.55, z: 0.9 },
+        { x: -0.55, z: -1.8 },
+        { x: 0.35, z: -1.8 },
+        { x: 0.35, z: 0.9 },
+      ],
+      patrolSpeed: 1.45,
+    },
+    {
+      id: 'npc_kpako',
+      name: 'Bros Kpako',
+      role: 'Effurun Area Youth Leader',
+      icon: '🔥',
+      dialogueLines: [
+        'Warri no dey carry last! I see your hustle for this junction, respect!',
+        'Greet the boys well and nobody go give you wahala.',
+      ],
+      statDeltas: { respect: 14, heat: -8 },
+      avatarConfig: {
+        gender: 'male',
+        name: 'Bros Kpako',
+        skinTone: '#2c1b18',
+        outfitStyle: 'senator',
+        outfitColor: '#831843',
+        accentColor: '#fbbf24',
+        hairStyle: 'afro',
+        hairColor: '#111827',
+        sunglasses: true,
+        goldChain: true,
+        coralBeads: false,
+        wristwatch: true,
+        earrings: false,
+      },
+      startX: -2.4,
+      startZ: 2.4,
+      startRotY: Math.PI / 2,
+      defaultPose: 'walk',
+      patrolWaypoints: [
+        { x: -2.4, z: 2.4 },
+        { x: 1.1, z: 2.4 },
+        { x: 1.1, z: -2.0 },
+        { x: -2.4, z: 1.3 },
+      ],
+      patrolSpeed: 1.5,
+    },
+    {
+      id: 'npc_mama_joy',
+      name: 'Mama Joy',
+      role: 'Roasted Bole & Fish Queen',
+      icon: '🐟',
+      dialogueLines: [
+        'Hot bole and peppered titus fish just commot from fire o!',
+        'Chop belleful make you get strength for afternoon hustle!',
+      ],
+      statDeltas: { mood: 10, energy: 6 },
+      avatarConfig: {
+        gender: 'female',
+        name: 'Mama Joy',
+        skinTone: '#5e3829',
+        outfitStyle: 'ankara',
+        outfitColor: '#c2410c',
+        accentColor: '#fef08a',
+        hairStyle: 'bun',
+        hairColor: '#111827',
+        sunglasses: false,
+        goldChain: false,
+        coralBeads: true,
+        wristwatch: false,
+        earrings: true,
+      },
+      startX: 1.05,
+      startZ: -0.2,
+      startRotY: -Math.PI / 2,
+      defaultPose: 'walk',
+      patrolWaypoints: [
+        { x: 1.05, z: -0.2 },
+        { x: 1.05, z: -1.9 },
+        { x: 0.45, z: -1.0 },
+      ],
+      patrolSpeed: 1.1,
+    },
+    {
+      id: 'npc_dj_kevwe',
+      name: 'DJ Kevwe',
+      role: 'Street Mixtape Promoter',
+      icon: '🎧',
+      dialogueLines: [
+        'New Delta Afrobeat mixtape dey burst speaker across Effurun!',
+        'Saturday owambe go loud pass generator!',
+      ],
+      statDeltas: { mood: 15, respect: 6 },
+      avatarConfig: {
+        gender: 'male',
+        name: 'DJ Kevwe',
+        skinTone: '#7d4c35',
+        outfitStyle: 'casual',
+        outfitColor: '#1e3a8a',
+        accentColor: '#fde047',
+        hairStyle: 'dreads',
+        hairColor: '#111827',
+        sunglasses: true,
+        goldChain: true,
+        coralBeads: false,
+        wristwatch: true,
+        earrings: true,
+      },
+      startX: -2.5,
+      startZ: -2.2,
+      startRotY: 0,
+      defaultPose: 'walk',
+      patrolWaypoints: [
+        { x: -2.5, z: -2.2 },
+        { x: 1.1, z: -2.2 },
+      ],
+      patrolSpeed: 1.35,
+    },
+  ],
+};
+
 export interface BuiltWorldScene {
   group: THREE.Group;
   hotspots: WorldHotspot[];
   obstacles: WorldObstacle[];
+  npcs: BuiltWorldNpc[];
   boundary: { minX: number; maxX: number; minZ: number; maxZ: number };
   spawn: { x: number; z: number };
-  update: (delta: number, time: number) => void;
+  update: (delta: number, time: number, playerX?: number, playerZ?: number) => void;
   dispose: () => void;
 }
 
@@ -1095,11 +1646,115 @@ export function buildWorldScene(locationId: WorldLocationId): BuiltWorldScene {
     });
   });
 
-  const update = (delta: number, time: number) => {
+  // ----------------------------------------------------
+  // Spawn Walking & Interactive 3D People (NPCs)
+  // ----------------------------------------------------
+  const npcDefs = WORLD_NPCS[locationId] || [];
+  const builtNpcs: BuiltWorldNpc[] = [];
+  const npcRings: THREE.Mesh[] = [];
+
+  function lerpNpcAngle(a: number, b: number, t: number): number {
+    const diff = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI;
+    const wrapped = diff < -Math.PI ? diff + Math.PI * 2 : diff;
+    return a + wrapped * Math.min(1, t);
+  }
+
+  npcDefs.forEach((npcDef) => {
+    const npcRig = build3DAvatar(npcDef.avatarConfig, { showPedestal: false });
+    npcRig.root.position.set(npcDef.startX, 0, npcDef.startZ);
+    npcRig.root.rotation.y = npcDef.startRotY;
+    group.add(npcRig.root);
+
+    // Emerald ground ring beneath each walking person
+    const npcRingMat = makeMat({
+      color: 0x10b981,
+      emissive: 0x10b981,
+      emissiveIntensity: 0.75,
+      transparent: true,
+      opacity: 0.7,
+      roughness: 0.2,
+    });
+    const npcRingMesh = new THREE.Mesh(
+      makeGeom(new THREE.RingGeometry(0.32, 0.41, 24)),
+      npcRingMat
+    );
+    npcRingMesh.rotation.x = -Math.PI / 2;
+    npcRingMesh.position.set(npcDef.startX, 0.014, npcDef.startZ);
+    group.add(npcRingMesh);
+    npcRings.push(npcRingMesh);
+
+    builtNpcs.push({
+      def: npcDef,
+      rig: npcRig,
+      x: npcDef.startX,
+      z: npcDef.startZ,
+      rotY: npcDef.startRotY,
+      waypointIdx: 1,
+      reactionPose: null,
+      reactionTimer: 0,
+      dialogueIndex: 0,
+    });
+  });
+
+  const update = (delta: number, time: number, playerX?: number, playerZ?: number) => {
     animators.forEach((fn) => fn(delta, time));
+
+    builtNpcs.forEach((npc, idx) => {
+      const distToPlayer =
+        playerX !== undefined && playerZ !== undefined
+          ? Math.hypot(playerX - npc.x, playerZ - npc.z)
+          : 999;
+
+      let activePose: string = npc.def.defaultPose;
+
+      if (npc.reactionTimer > 0) {
+        npc.reactionTimer -= delta;
+        activePose = npc.reactionPose || 'groove';
+        if (playerX !== undefined && playerZ !== undefined) {
+          const angleToPlayer = Math.atan2(playerX - npc.x, playerZ - npc.z);
+          npc.rotY = lerpNpcAngle(npc.rotY, angleToPlayer, 10 * delta);
+        }
+      } else if (distToPlayer < 1.35 && playerX !== undefined && playerZ !== undefined) {
+        // Pause walking & greet player when player walks up to them
+        const angleToPlayer = Math.atan2(playerX - npc.x, playerZ - npc.z);
+        npc.rotY = lerpNpcAngle(npc.rotY, angleToPlayer, 8 * delta);
+        activePose = npc.def.defaultPose === 'walk' ? 'wave' : npc.def.defaultPose;
+      } else if (npc.def.patrolWaypoints && npc.def.patrolWaypoints.length > 1) {
+        // Walk smoothly along patrol waypoints
+        const waypoints = npc.def.patrolWaypoints;
+        const target = waypoints[npc.waypointIdx % waypoints.length];
+        const dx = target.x - npc.x;
+        const dz = target.z - npc.z;
+        const dist = Math.hypot(dx, dz);
+
+        if (dist < 0.12) {
+          npc.waypointIdx = (npc.waypointIdx + 1) % waypoints.length;
+        } else {
+          const speed = npc.def.patrolSpeed || 1.25;
+          const step = Math.min(dist, speed * delta);
+          npc.x += (dx / dist) * step;
+          npc.z += (dz / dist) * step;
+          const moveAngle = Math.atan2(dx, dz);
+          npc.rotY = lerpNpcAngle(npc.rotY, moveAngle, 9 * delta);
+        }
+        activePose = 'walk';
+      } else {
+        npc.rotY = lerpNpcAngle(npc.rotY, npc.def.startRotY, 4 * delta);
+      }
+
+      npc.rig.root.position.set(npc.x, 0, npc.z);
+      npc.rig.root.rotation.y = npc.rotY;
+      npc.rig.update(delta, time + idx * 1.37, activePose, 88);
+
+      const ringMesh = npcRings[idx];
+      if (ringMesh) {
+        ringMesh.position.set(npc.x, 0.014, npc.z);
+      }
+    });
   };
 
   const dispose = () => {
+    builtNpcs.forEach((n) => n.rig.dispose());
     geometriesToDispose.forEach((g) => g.dispose());
     materialsToDispose.forEach((m) => m.dispose());
   };
@@ -1108,6 +1763,7 @@ export function buildWorldScene(locationId: WorldLocationId): BuiltWorldScene {
     group,
     hotspots: config.hotspots,
     obstacles: config.obstacles,
+    npcs: builtNpcs,
     boundary: config.boundary,
     spawn: config.spawn,
     update,
